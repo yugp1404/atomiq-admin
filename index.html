@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atomiq Admin</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12141c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Atomiq Admin">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{
+  --bg:#12141c; --panel:#1b1e29; --raise:#242836; --line:#2d3243; --text:#eef0f6; --mute:#9aa1b5;
+  --accent:#8b7bff; --ok:#22d98a; --warn:#fbbf24; --bad:#f87171;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){ --bg:#f3f4f9; --panel:#fff; --raise:#eef0f7; --line:#dcdfe9; --text:#14161c; --mute:#5b616e; --accent:#5b4cf5; --ok:#0f9d63; --warn:#b7791f; --bad:#dc2626; color-scheme:light; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 ui-rounded,-apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0}
+.wrap{max-width:640px;margin:0 auto;padding:0 16px 96px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 0 10px;display:flex;align-items:center;gap:10px}
+header h1{font-size:1.25rem;margin:0;flex:1;letter-spacing:-.01em}
+.ring{width:26px;height:26px;border:3px solid var(--accent);border-radius:50%;position:relative;flex:none}
+.ring::after{content:"";position:absolute;inset:6px;background:var(--ok);border-radius:50%}
+.tabs{display:flex;gap:6px;background:var(--panel);padding:4px;border-radius:14px;margin-bottom:12px}
+.tabs button{flex:1;padding:9px 6px;border-radius:10px;background:transparent;color:var(--mute);font-weight:600}
+.tabs button.on{background:var(--raise);color:var(--text)}
+.badge{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:99px;background:var(--warn);color:#000;font-size:.75rem;text-align:center}
+input[type=text],input[type=email],input[type=password],input[type=search]{width:100%;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;outline:none}
+input:focus{border-color:var(--accent)}
+.btn{padding:11px 14px;border-radius:12px;background:var(--raise);font-weight:600}
+.btn.pri{background:var(--accent);color:#fff}
+.btn.bad{background:transparent;border:1px solid var(--bad);color:var(--bad)}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;width:100%;text-align:left}
+button.card{color:var(--text)}
+.card .nm{font-weight:700}
+.card .sub{font-size:.82rem;color:var(--mute)}
+.card .pct{margin-left:auto;font-weight:800;color:var(--accent);font-size:1.1rem;white-space:nowrap}
+.pill{font-size:.72rem;padding:2px 8px;border-radius:99px;background:var(--bad);color:#fff;margin-left:6px}
+.msg{padding:10px 12px;border-radius:12px;background:var(--raise);margin-bottom:10px;font-size:.92rem}
+.msg.err{border:1px solid var(--bad)}
+.msg b{font-size:1.15rem;letter-spacing:.04em;user-select:all}
+.empty{color:var(--mute);text-align:center;padding:36px 0}
+.login{min-height:80vh;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.login h2{margin:0 0 4px;font-size:1.6rem}
+.sheetbg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:none}
+.sheetbg.on{display:block}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom,0px));max-width:640px;margin:0 auto}
+.sheet h3{margin:0 0 2px;font-size:1.2rem}
+.sheet .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.sheet .grid .btn{width:100%}
+.sc{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:.9rem;align-items:center}
+.sc small{color:var(--mute)}
+.sc button{background:none;color:var(--bad);padding:4px 8px}
+.pair{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.pair .names{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px;font-weight:700}
+.pair .names span:last-child{text-align:right}
+.pair .row .btn{flex:1;font-size:.88rem}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="sheetbg" id="sheetbg"><div class="sheet" id="sheet"></div></div>
+
+<script>
+// ---- connection (public key: safe to keep in the page) ----
+const URL_ = "https://yqbxhgicpbpbfqmdabju.supabase.co";
+const KEY = "sb_publishable_bwRAiTZ-zqTB1oFv8NDZAw_7yydGHGa";
+
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+let session = (()=>{ try{ return JSON.parse(store.get("atomiq_admin_session")||"null"); }catch(e){ return null; } })();
+let players = [], dupes = [], tab = "players", query = "", note = "";
+
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const day = t => t ? new Date(t).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"2-digit"}) : "never";
+const $ = id => document.getElementById(id);
+
+async function raw(path, opts={}, token){
+  const h = {apikey:KEY,"Content-Type":"application/json"};
+  if(token) h.Authorization = "Bearer "+token;
+  return fetch(URL_+path,{...opts,headers:{...h,...(opts.headers||{})}});
+}
+async function refresh(){
+  if(!session||!session.refresh_token) return false;
+  try{
+    const r = await raw("/auth/v1/token?grant_type=refresh_token",{method:"POST",body:JSON.stringify({refresh_token:session.refresh_token})});
+    if(!r.ok) return false;
+    session = await r.json(); store.set("atomiq_admin_session",JSON.stringify(session)); return true;
+  }catch(e){ return false; }
+}
+async function api(path, opts){
+  let r = await raw(path,opts,session&&session.access_token);
+  if(r.status===401 && await refresh()) r = await raw(path,opts,session.access_token);
+  if(r.status===401){ signOut(); throw new Error("Please sign in again."); }
+  if(!r.ok){
+    let m="Something went wrong."; try{ const j=await r.json(); m=j.message||j.msg||m; }catch(e){}
+    throw new Error(m);
+  }
+  return r.status===204 ? null : r.json().catch(()=>null);
+}
+const rpc = (name,args) => api("/rest/v1/rpc/"+name,{method:"POST",body:JSON.stringify(args||{})});
+
+// ---- sign in / out ----
+async function signIn(ev){
+  ev.preventDefault();
+  const email=$("em").value.trim(), pw=$("pw").value, b=$("go"); b.disabled=true; b.textContent="Signing in…";
+  try{
+    const r = await raw("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email,password:pw})});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error_description||j.msg||"Wrong email or password.");
+    session=j; store.set("atomiq_admin_session",JSON.stringify(j));
+    await boot();
+  }catch(e){ note=e.message; renderLogin(); }
+}
+function signOut(){ session=null; players=[]; dupes=[]; store.del("atomiq_admin_session"); note=""; renderLogin(); }
+
+// ---- screens ----
+function renderLogin(){
+  $("app").innerHTML = `<form class="login" onsubmit="signIn(event)">
+    <div class="ring" style="width:44px;height:44px"></div>
+    <h2>Atomiq Admin</h2>
+    ${note?`<div class="msg err">${esc(note)}</div>`:""}
+    <input id="em" type="email" autocomplete="username" placeholder="Admin email" required>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="Password" required>
+    <button id="go" class="btn pri" type="submit">Sign in</button>
+  </form>`;
+  note="";
+}
+function renderShell(){
+  $("app").innerHTML = `<header><div class="ring"></div><h1>Atomiq Admin</h1><button class="btn" onclick="signOut()">Sign out</button></header>
+  <div class="tabs">
+    <button id="t-players" onclick="setTab('players')">Players</button>
+    <button id="t-dupes" onclick="setTab('dupes')">Duplicates${dupes.length?`<span class="badge">${dupes.length}</span>`:""}</button>
+  </div>
+  <div id="note"></div><div id="view"></div>`;
+  setTab(tab);
+}
+function setTab(t){
+  tab=t; $("t-players").classList.toggle("on",t==="players"); $("t-dupes").classList.toggle("on",t==="dupes");
+  t==="players" ? renderPlayers() : renderDupes();
+}
+function say(html,err){ $("note").innerHTML = html?`<div class="msg ${err?"err":""}">${html}</div>`:""; }
+
+function renderPlayers(){
+  $("view").innerHTML = `<input type="search" id="q" placeholder="Search ${players.length} players" value="${esc(query)}" oninput="query=this.value;drawList()" style="margin-bottom:10px"><div id="list"></div>`;
+  drawList();
+}
+function drawList(){
+  const q=query.trim().toLowerCase();
+  const rows = players.filter(p=>!q||p.full_name.toLowerCase().includes(q));
+  $("list").innerHTML = rows.length ? rows.map(p=>`<button class="card" onclick="openPlayer('${esc(p.id)}')">
+    <div><div class="nm">${esc(p.full_name)}${p.locked?'<span class="pill">locked</span>':""}</div>
+    <div class="sub">Joined ${day(p.created_at)} · last login ${day(p.last_login)} · ${p.exams} exam${p.exams==1?"":"s"}</div></div>
+    <div class="pct">${p.best==null?"–":p.best+"%"}</div></button>`).join("") : `<div class="empty">${players.length?"No match.":"No players yet."}</div>`;
+}
+function renderDupes(){
+  $("view").innerHTML = dupes.length ? dupes.map((d,i)=>`<div class="pair">
+    <div class="names"><span>${esc(d.a_name)}</span><span>${esc(d.b_name)}</span></div>
+    <div class="row"><button class="btn pri" onclick="merge(${i},'a')">Keep left</button><button class="btn pri" onclick="merge(${i},'b')">Keep right</button></div>
+    <div class="sub" style="color:var(--mute);font-size:.8rem;margin-top:8px">Keeping one moves the other's scores into it and deletes the extra account.</div>
+  </div>`).join("") : `<div class="empty">No likely duplicates found.</div>`;
+}
+
+// ---- player sheet ----
+function openSheet(html){ $("sheet").innerHTML=html; $("sheetbg").classList.add("on"); }
+function closeSheet(){ $("sheetbg").classList.remove("on"); }
+$("sheetbg").addEventListener("click",e=>{ if(e.target.id==="sheetbg") closeSheet(); });
+
+async function openPlayer(id){
+  const p = players.find(x=>x.id===id); if(!p) return;
+  let scores=[];
+  try{ scores = await api("/rest/v1/scores?select=id,subject,chapter,correct,total,pct,ts&pid=eq."+encodeURIComponent(id)+"&order=ts.desc&limit=30"); }catch(e){}
+  openSheet(`<h3>${esc(p.full_name)}</h3>
+    <div style="color:var(--mute);font-size:.88rem">Joined ${day(p.created_at)} · last login ${day(p.last_login)} · ${p.exams} exams · avg ${p.avg_pct==null?"–":p.avg_pct+"%"}</div>
+    <div id="sheetmsg" style="margin-top:12px"></div>
+    <div class="grid">
+      <button class="btn pri" onclick="resetPw('${esc(id)}')">Reset password</button>
+      <button class="btn" onclick="setPw('${esc(id)}')">Set password…</button>
+      <button class="btn" onclick="rename('${esc(id)}')">Rename…</button>
+      <button class="btn" onclick="unlock('${esc(id)}')">Unlock login</button>
+    </div>
+    <div style="font-weight:700;margin:6px 0 2px">Scores</div>
+    ${scores.length?scores.map(s=>`<div class="sc"><div>${esc(s.subject)} · ${esc(s.chapter)}<br><small>${s.correct}/${s.total} · ${day(s.ts)}</small></div><div><b>${s.pct}%</b><button onclick="delScore(${s.id},'${esc(id)}')">Delete</button></div></div>`).join(""):`<div class="sub" style="color:var(--mute)">No scores yet.</div>`}
+    <div class="row" style="margin-top:18px"><button class="btn" onclick="closeSheet()" style="flex:1">Close</button><button id="delbtn" class="btn bad" onclick="delPlayer('${esc(id)}')" style="flex:1">Delete player</button></div>`);
+}
+const smsg=(h,err)=>{ const e=$("sheetmsg"); if(e) e.innerHTML=`<div class="msg ${err?"err":""}">${h}</div>`; };
+
+async function resetPw(id){
+  try{ const pw=await rpc("admin_set_password",{p_id:id}); smsg(`New temporary password: <b>${esc(pw)}</b><br><span style="color:var(--mute)">Tell the player. They are signed out everywhere.</span>`); }
+  catch(e){ smsg(esc(e.message),1); }
+}
+async function setPw(id){
+  const pw=prompt("Type the new password (at least 4 characters):"); if(!pw) return;
+  try{ await rpc("admin_set_password",{p_id:id,p_pw:pw}); smsg(`Password changed to <b>${esc(pw)}</b>.`); }
+  catch(e){ smsg(esc(e.message),1); }
+}
+async function unlock(id){
+  try{ await rpc("admin_unlock_player",{p_id:id}); smsg("Login unlocked."); await load(); }
+  catch(e){ smsg(esc(e.message),1); }
+}
+async function rename(id){
+  const p=players.find(x=>x.id===id);
+  const v=prompt("New full name (first name, then surname):",p.full_name); if(!v) return;
+  const parts=v.trim().split(/\s+/); if(parts.length<2){ smsg("Please give a first name and a surname.",1); return; }
+  try{ await rpc("admin_rename_player",{p_id:id,p_first:parts[0],p_last:parts.slice(1).join(" ")}); closeSheet(); await load(); say("Renamed."); }
+  catch(e){ smsg(esc(e.message),1); }
+}
+async function delScore(sid,pid){
+  try{ await api("/rest/v1/scores?id=eq."+sid,{method:"DELETE"}); await load(); openPlayer(pid); }
+  catch(e){ smsg(esc(e.message),1); }
+}
+async function delPlayer(id){
+  const b=$("delbtn");
+  if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Tap again to delete"; return; }
+  try{ await rpc("admin_delete_player",{p_id:id}); closeSheet(); await load(); say("Player deleted."); }
+  catch(e){ smsg(esc(e.message),1); }
+}
+async function merge(i,keep){
+  const d=dupes[i], k=keep==="a"?{id:d.a_id,n:d.a_name}:{id:d.b_id,n:d.b_name}, x=keep==="a"?{id:d.b_id,n:d.b_name}:{id:d.a_id,n:d.a_name};
+  if(!confirm(`Keep "${k.n}" and merge "${x.n}" into it? "${x.n}" will be deleted.`)) return;
+  try{ await rpc("admin_merge_players",{p_keep:k.id,p_drop:x.id}); await load(); say("Merged."); }
+  catch(e){ say(esc(e.message),1); }
+}
+
+// ---- data ----
+async function load(){
+  [players, dupes] = await Promise.all([rpc("admin_list_players"), rpc("admin_find_duplicates")]);
+  players = players||[]; dupes = dupes||[];
+  renderShell();
+}
+async function boot(){
+  if(!session){ renderLogin(); return; }
+  try{
+    const a = await api("/rest/v1/admins?select=user_id");
+    if(!a || !a.length){ note="You're signed in, but this account isn't an admin yet. Run 2-make-me-admin.sql in Supabase."; signOutKeepNote(); return; }
+    await load();
+  }catch(e){ note=e.message; if(session) signOutKeepNote(); else renderLogin(); }
+}
+function signOutKeepNote(){ const n=note; session=null; store.del("atomiq_admin_session"); note=n; renderLogin(); }
+boot();
+</script>
+</body>
+</html>
